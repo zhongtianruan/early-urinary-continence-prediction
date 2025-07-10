@@ -22,7 +22,7 @@ from io import BytesIO
 from xgboost import XGBClassifier
 
 # Configure SHAP to use JS instead of Matplotlib
-shap.initjs()
+# shap.initjs()
 
 # Configure page
 st.set_page_config(
