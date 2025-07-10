@@ -23,7 +23,11 @@ from xgboost import XGBClassifier
 
 # Configure SHAP to use JS instead of Matplotlib
 # shap.initjs()
-
+if st.secrets.get("DEPLOY_ENV") == "cloud":
+    pass  # Cloud环境中避免初始化
+else:
+    shap.initjs()  # 本地环境保留
+    
 # Configure page
 st.set_page_config(
     page_title="Urinary Continence Predictor",
@@ -65,40 +69,35 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """生成SHAP决策力图（优先HTML，失败则用Matplotlib图）"""
+    """无需预加载JS的SHAP生成方案"""
     try:
-        # 核心逻辑不变 ↓
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
-        
+            
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_input)
         english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
-        
-        plot = shap.force_plot(
-            base_value=explainer.expected_value,
-            shap_values=shap_values[0],
-            features=df_input.iloc[0],
-            feature_names=english_features,
-            matplotlib=False
-        )
-        # 核心逻辑不变 ↑
 
-        return f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
-    
-    # 关键修复：给except添加具体异常类型 ↓
+        # 静态图像方案 - 避免JS依赖
+        plt.figure()
+        shap.force_plot(
+            explainer.expected_value,
+            shap_values[0],
+            df_input.iloc[0],
+            feature_names=english_features,
+            matplotlib=True,
+            show=False
+        )
+        
+        # 返回Base64图像
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches="tight")
+        plt.close()
+        img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f'<img src="data:image/png;base64,{img_base64}">'
+        
     except Exception as e:
-        st.error(f"主要SHAP渲染失败，启用备选方案: {str(e)}")
-        try:
-            # 备选的Matplotlib方案 ↓
-            plt.figure()
-            shap.summary_plot(shap_values, df_input, show=False)
-            buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches="tight")
-            img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-            return f'<img src="data:image/png;base64,{img_base64}">'
-        except Exception as e2:
-            return f"<p style='color:red'>SHAP渲染失败: {e2}</p>"
+        return f"<p style='color:red'>可视化渲染失败: {str(e)}</p>"
 
 # Main application
 def main():
@@ -186,6 +185,8 @@ def main():
             
             # 直接显示SHAP图（不显示标题）
             shap_html = create_shap_plot(model, df_input)
+            if shap_html:
+                st.markdown(shap_html, unsafe_allow_html=True)
             if shap_html:
                 st.components.v1.html(shap_html, height=300)
             else:
