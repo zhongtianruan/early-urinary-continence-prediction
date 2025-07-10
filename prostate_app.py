@@ -38,7 +38,7 @@ st.set_page_config(
 MODEL_PATH = "xgboost_model.pkl"  # 确保模型与代码同目录
 # SHAP初始化配置（兼容部署环境）
 shap.initjs()
-shap.js.init()
+# shap.js.init()
 
 # Load model
 def load_model():
