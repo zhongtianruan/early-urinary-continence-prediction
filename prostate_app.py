@@ -64,32 +64,17 @@ FEATURE_MAPPING = {
     '手术技术': 'Nerve Sparing'
 }
 
-# 创建SHAP可视化函数（修复空白问题）
 def create_shap_plot(model, df_input):
-    """生成SHAP决策力图HTML并修复显示问题"""
+    """生成SHAP决策力图（优先HTML，失败则用Matplotlib图）"""
     try:
-        # 添加浏览器环境兼容
-        shap_html = shap.force_plot(...)
-        return f"<head>{shap.getjs()}</head><body>{shap_html.html()}</body>"
-    except:
-        # 备选方案
-        plt.figure()
-        shap.summary_plot(shap_values, df_input, show=False)
-        buf = BytesIO()
-        plt.savefig(buf, format='png')
-        return base64.b64encode(buf.getvalue()).decode('utf-8')
-
-        # 确保使用TreeExplainer
+        # 核心逻辑不变 ↓
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
         
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_input)
-        
-        # 创建英文特征名列表用于显示
         english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
         
-        # 生成SHAP力图
         plot = shap.force_plot(
             base_value=explainer.expected_value,
             shap_values=shap_values[0],
@@ -97,13 +82,23 @@ def create_shap_plot(model, df_input):
             feature_names=english_features,
             matplotlib=False
         )
-        
-        # 返回完整的HTML
-        return f"{shap.getjs()}{plot.html()}"
+        # 核心逻辑不变 ↑
+
+        return f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
     
+    # 关键修复：给except添加具体异常类型 ↓
     except Exception as e:
-        st.error(f"SHAP生成错误: {str(e)}")
-        return None
+        st.error(f"主要SHAP渲染失败，启用备选方案: {str(e)}")
+        try:
+            # 备选的Matplotlib方案 ↓
+            plt.figure()
+            shap.summary_plot(shap_values, df_input, show=False)
+            buf = BytesIO()
+            plt.savefig(buf, format='png', bbox_inches="tight")
+            img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+            return f'<img src="data:image/png;base64,{img_base64}">'
+        except Exception as e2:
+            return f"<p style='color:red'>SHAP渲染失败: {e2}</p>"
 
 # Main application
 def main():
