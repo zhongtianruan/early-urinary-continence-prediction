@@ -69,7 +69,6 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """使用自定义格式的JavaScript渲染SHAP图"""
     try:
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
@@ -78,39 +77,30 @@ def create_shap_plot(model, df_input):
         shap_values = explainer.shap_values(df_input)
         base_value = explainer.expected_value
         
-        # 创建带空格的特征名显示（解决截断问题）
-        custom_features = []
-        feature_names_for_display = []  # 单独处理特征名显示
-        
+        # 创建特征值显示文本（不带冒号）
+        feature_display_values = []
         for i, feat in enumerate(df_input.columns):
             value = df_input.iloc[0, i]
-            
-            # 特征值显示处理
             if feat == '手术技术':
                 display_value = "YES" if value == 1 else "NO"
-                feature_value = f"{FEATURE_MAPPING[feat]}: {display_value}"
-                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}")
+                feature_display_values.append(f"{FEATURE_MAPPING[feat]} {display_value}")
             elif feat == 'BMI':
                 display_value = "≥24" if value == 1 else "<24"
-                feature_value = f"{FEATURE_MAPPING[feat]}: {display_value}"
-                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}")
+                feature_display_values.append(f"{FEATURE_MAPPING[feat]} {display_value}")
             else:
-                feature_value = f"{FEATURE_MAPPING[feat]}: {value:.2f}"
-                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}")
-            
-            custom_features.append(feature_value)
+                feature_display_values.append(f"{FEATURE_MAPPING[feat]} {value:.2f}")
         
-        # 生成SHAP力图（关键修改）
+        # 生成SHAP力图
         plot = shap.force_plot(
             base_value=base_value,
             shap_values=shap_values[0],
-            features=df_input.iloc[0].values,  # 使用原始数值
-            feature_names=feature_names_for_display,  # 单独处理特征名
+            features=df_input.iloc[0].values,
+            feature_names=feature_display_values,  # 使用组合后的文本
             matplotlib=False,
             show=False
         )
         
-        # 解决标签截断的核心方案
+        # HTML模板（关键修改：移除冒号相关逻辑）
         html_content = f"""
         <div class="shap-container">
             {shap.getjs()}
@@ -121,27 +111,26 @@ def create_shap_plot(model, df_input):
         <style>
             .shap-container {{
                 width: 100%;
-                padding: 0 0 0 25px; /* 左侧增加留白空间 */
+                padding: 0 0 0 20px;
                 position: relative;
                 overflow: visible !important;
             }}
             .shap-plot-wrapper {{
                 position: relative;
-                left: -15px; /* 整体左移腾出空间 */
-                width: calc(100% + 30px); /* 补偿宽度 */
+                left: -15px;
+                width: calc(100% + 30px);
             }}
             .shap-force-plot {{
-                height: 280px !important; /* 增加高度 */
+                height: 280px !important;
                 font-size: 12px !important;
                 overflow: visible !important;
             }}
             .shap-left-panel {{
-                min-width: 200px !important; /* 确保标签完整显示 */
+                min-width: 200px !important;
                 padding-right: 10px !important;
             }}
             .shap-force-plot .feature-name {{
-                white-space: nowrap; /* 防止换行 */
-                text-overflow: clip; /* 避免截断 */
+                white-space: nowrap;
                 display: inline-block;
                 max-width: 95%;
                 overflow: visible !important;
@@ -149,30 +138,11 @@ def create_shap_plot(model, df_input):
             .shap-force-plot svg {{
                 overflow: visible !important;
             }}
+            /* 隐藏自动生成的特征值 */
+            .shap-force-plot .feature-value {{
+                display: none !important;
+            }}
         </style>
-        <script>
-            setTimeout(() => {{
-                // 格式化数值显示
-                document.querySelectorAll('text.shap-value').forEach(el => {{
-                    if (!isNaN(el.textContent)) {{
-                        el.textContent = parseFloat(el.textContent).toFixed(1);
-                    }}
-                }});
-                
-                // 调整base value位置
-                const baseEl = document.querySelector('text.shap-base-value');
-                if (baseEl) {{
-                    const baseValue = parseFloat(baseEl.textContent).toFixed(2);
-                    baseEl.textContent = baseValue;
-                    baseEl.setAttribute('x', parseFloat(baseEl.getAttribute('x')) + 5);
-                }}
-                
-                // 关键：确保标签完全可见
-                document.querySelectorAll('.shap-left-panel').forEach(panel => {{
-                    panel.style.transform = 'translateX(8px)';
-                }});
-            }}, 800); /* 延长等待确保渲染完成 */
-        </script>
         """
         return html_content
     
