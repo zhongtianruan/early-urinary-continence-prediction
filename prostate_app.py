@@ -131,6 +131,30 @@ def main():
     if model is None:
         return
 
+    st.markdown("""
+<style>
+    /* 增大所有滑块标签字体 */
+    div[data-testid="stSlider"] label {
+        font-size: 18px !important;
+    }
+    
+    /* 增大单选按钮标签字体 */
+    div[data-testid="stRadio"] label {
+        font-size: 14px !important;
+    }
+    
+    /* 增大BMI分类说明字体 */
+    .stCaption {
+        font-size: 12px !important;
+    }
+    
+    /* 增大单选按钮选项字体 */
+    .stRadio label {
+        font-size: 12px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+    
     # 输入参数 - 单列布局
     with st.container():
         col1, col2 = st.columns(2)
