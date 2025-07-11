@@ -148,7 +148,7 @@ def main():
             
             bmi = st.slider('BMI', 
                        min_value=18.0, max_value=35.0, value=25.0, step=0.1)
-            st.caption(f"BMI category: {'Yes' if bmi >= 24 else 'No'}")
+            st.caption(f"BMI category: {'≥24' if bmi >= 24 else '＜24'}")
         
         # 神经保留技术单独一行
         nerve = st.radio('Nerve sparing technique', 
