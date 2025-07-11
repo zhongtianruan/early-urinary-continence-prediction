@@ -69,9 +69,8 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """使用自定义格式的JavaScript渲染SHAP图"""
+    """使用自定义格式的JavaScript渲染SHAP图，解决左侧标签截断问题"""
     try:
-        # 确保使用TreeExplainer
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
         
@@ -79,88 +78,104 @@ def create_shap_plot(model, df_input):
         shap_values = explainer.shap_values(df_input)
         base_value = explainer.expected_value
         
-        # 创建自定义格式的特征值显示
         custom_features = []
         for i, feat in enumerate(df_input.columns):
             value = df_input.iloc[0, i]
-            
-            # 特殊处理特定特征的显示
-            if feat == '手术技术':  # Nerve sparing
+            if feat == '手术技术':
                 display_value = "YES" if value == 1 else "NO"
                 custom_features.append(f"{FEATURE_MAPPING[feat]}: {display_value}")
-            elif feat == 'BMI':  # BMI
+            elif feat == 'BMI':
                 display_value = "≥24" if value == 1 else "<24"
                 custom_features.append(f"{FEATURE_MAPPING[feat]}: {display_value}")
-            else:  # 其他特征保留原始值，保留2位小数
+            else:
                 custom_features.append(f"{FEATURE_MAPPING[feat]}: {value:.2f}")
         
-        # 生成SHAP力图
         plot = shap.force_plot(
             base_value=base_value,
             shap_values=shap_values[0],
-            features=custom_features,  # 使用自定义格式的特征显示
-            feature_names=custom_features,  # 同时用于特征名
+            features=custom_features,
+            feature_names=custom_features,
             matplotlib=False,
             show=False
         )
         
-        # 返回完整的HTML并添加自定义样式解决截断问题
+        # 关键修改：全新布局方案解决标签截断问题
         html_content = f"""
-        <div style="width:100%; height:300px; overflow:visible; position:relative; padding-left: 20px;">
+        <!-- 增加外层容器并添加左侧缓冲空间 -->
+        <div style="width:100%; min-width:500px; margin-left:80px; overflow:visible">
             {shap.getjs()}
-            <div style="position:absolute; left:0; width:100%;">
+            <div id="shap-container" style="width:100%; height:280px">
                 {plot.html()}
             </div>
         </div>
+        
         <style>
+            /* 强制重置SHAP默认样式 */
             .shap-force-plot {{
-                width: 100% !important;
-                height: 250px !important;
-                font-size: 12px !important;
-                overflow: visible !important;
+                width: calc(100% + 100px) !important;
+                min-width: 500px !important;
+                height: 240px !important;
+                transform: translateX(40px);
             }}
-            .shap-value {{
-                font-size: 12px !important;
-            }}
+            
+            /* 增加左侧标签显示空间 */
             .shap-left-panel {{
-                padding-left: 25px !important;  /* 增加左侧内边距 */
-                min-width: 150px !important;    /* 确保左侧有足够空间 */
+                min-width: 220px !important;
+                padding-left: 40px !important;
             }}
-            .shap-force-plot svg {{
-                overflow: visible !important;
-            }}
-            .shap-force-plot .left-panel {{
-                padding-left: 25px !important;  /* 为左侧面板增加更多空间 */
-            }}
+            
+            /* 保证标签完整可见 */
             .shap-force-plot .feature-value {{
-                white-space: nowrap !important;  /* 防止文本换行 */
+                max-width: none !important;
+                overflow: visible !important;
+                text-overflow: unset !important;
+            }}
+            
+            /* 调整数值位置 */
+            .shap-value {{
+                transform: translateX(5px);
+                font-size: 11.5px !important;
+            }}
+            
+            /* 基础值标签优化 */
+            .shap-base-value {{
+                left: -50px !important;
+            }}
+            
+            /* 解决SVG裁剪问题 */
+            svg.shap-svg {{
+                overflow: visible !important;
             }}
         </style>
+        
         <script>
-            // 确保图表渲染完成后调整格式
+            // 渲染完成后强制刷新布局
             setTimeout(() => {{
-                // 格式化坐标轴标签
+                // 格式化数值标签
                 document.querySelectorAll('text.shap-value').forEach(el => {{
-                    const text = el.textContent;
-                    if (!isNaN(text)) {{
-                        const num = parseFloat(text);
-                        el.textContent = num.toFixed(1);
+                    if (!isNaN(el.textContent)) {{
+                        el.textContent = parseFloat(el.textContent).toFixed(1);
                     }}
                 }});
                 
-                // 格式化base value标签
+                // 格式化基础值
                 const baseEl = document.querySelector('text.shap-base-value');
-                if (baseEl) {{
-                    const baseValue = parseFloat(baseEl.textContent);
-                    baseEl.textContent = baseValue.toFixed(2);
-                }}
+                if (baseEl) baseEl.textContent = parseFloat(baseEl.textContent).toFixed(2);
                 
-                // 手动调整左侧面板宽度
-                const leftPanels = document.querySelectorAll('.shap-left-panel');
-                leftPanels.forEach(panel => {{
-                    panel.style.minWidth = '150px';  // 确保左侧有足够空间
+                // 动态调整标签空间
+                const containers = document.querySelectorAll('.shap-left-panel');
+                containers.forEach(el => {{
+                    el.style.minWidth = '220px';
+                    el.style.paddingRight = '10px';
                 }});
-            }}, 500);
+                
+                // 刷新SVG渲染区域
+                const svg = document.querySelector('svg.shap-svg');
+                if (svg) {{
+                    const bbox = svg.getBBox();
+                    svg.setAttribute('viewBox', `${{bbox.x-50}} ${{bbox.y}} ${{bbox.width+80}} ${{bbox.height}}`);
+                }}
+            }}, 800);
         </script>
         """
         return html_content
