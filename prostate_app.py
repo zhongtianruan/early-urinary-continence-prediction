@@ -69,6 +69,7 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
+    """使用SHAP默认显示方式，但对分类变量进行特殊处理"""
     try:
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
@@ -77,30 +78,29 @@ def create_shap_plot(model, df_input):
         shap_values = explainer.shap_values(df_input)
         base_value = explainer.expected_value
         
-        # 创建特征值显示文本（不带冒号）
-        feature_display_values = []
-        for i, feat in enumerate(df_input.columns):
-            value = df_input.iloc[0, i]
+        # 创建特征值显示数组（对分类变量进行特殊处理）
+        display_values = []
+        for feat in df_input.columns:
+            value = df_input[feat].iloc[0]
             if feat == '手术技术':
-                display_value = "YES" if value == 1 else "NO"
-                feature_display_values.append(f"{FEATURE_MAPPING[feat]} {display_value}")
+                display_values.append("YES" if value == 1 else "NO")
             elif feat == 'BMI':
-                display_value = "≥24" if value == 1 else "<24"
-                feature_display_values.append(f"{FEATURE_MAPPING[feat]} {display_value}")
+                display_values.append("≥24" if value == 1 else "<24")
             else:
-                feature_display_values.append(f"{FEATURE_MAPPING[feat]} {value:.2f}")
+                # 数值型特征保留原始值（两位小数）
+                display_values.append(f"{value:.2f}" if isinstance(value, float) else str(value))
         
-        # 生成SHAP力图
+        # 生成SHAP力图（使用默认显示方式）
         plot = shap.force_plot(
             base_value=base_value,
             shap_values=shap_values[0],
-            features=df_input.iloc[0].values,
-            feature_names=feature_display_values,  # 使用组合后的文本
+            features=display_values,  # 使用处理后的显示值
+            feature_names=[FEATURE_MAPPING[feat] for feat in df_input.columns],  # 仅传入特征名
             matplotlib=False,
             show=False
         )
         
-        # HTML模板（关键修改：移除冒号相关逻辑）
+        # HTML容器（确保足够的宽度和合适的样式）
         html_content = f"""
         <div class="shap-container">
             {shap.getjs()}
@@ -111,36 +111,30 @@ def create_shap_plot(model, df_input):
         <style>
             .shap-container {{
                 width: 100%;
-                padding: 0 0 0 20px;
+                padding: 0 20px; /* 两侧增加留白 */
                 position: relative;
                 overflow: visible !important;
             }}
             .shap-plot-wrapper {{
                 position: relative;
-                left: -15px;
-                width: calc(100% + 30px);
+                width: 100%;
+                min-width: 450px; /* 确保足够宽度防止截断 */
             }}
             .shap-force-plot {{
-                height: 280px !important;
+                height: 280px !important; /* 增加高度 */
                 font-size: 12px !important;
                 overflow: visible !important;
             }}
             .shap-left-panel {{
-                min-width: 200px !important;
-                padding-right: 10px !important;
+                min-width: 200px !important; /* 确保标签完整显示 */
             }}
             .shap-force-plot .feature-name {{
-                white-space: nowrap;
-                display: inline-block;
-                max-width: 95%;
+                white-space: nowrap; /* 防止换行 */
+                max-width: 100%;
                 overflow: visible !important;
             }}
             .shap-force-plot svg {{
                 overflow: visible !important;
-            }}
-            /* 隐藏自动生成的特征值 */
-            .shap-force-plot .feature-value {{
-                display: none !important;
             }}
         </style>
         """
