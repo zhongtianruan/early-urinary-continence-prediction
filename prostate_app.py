@@ -61,7 +61,7 @@ def process_input(data):
 
 # 特征名映射（中文->英文）
 FEATURE_MAPPING = {
-    'BMI': 'BMI(kg/m2)',
+    'BMI': 'BMI',
     'MUL': 'MUL(mm)',
     'LAT': 'LAT(mm)',
     'LAM_RAD_SCORE': 'LAM RAD Score',
