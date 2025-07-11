@@ -187,7 +187,7 @@ def main():
             shap_html = create_shap_plot(model, df_input)
             if shap_html:
                 st.markdown(shap_html, unsafe_allow_html=True)
-            if shap_html:
+            # if shap_html:
                 st.components.v1.html(shap_html, height=300)
             else:
                 st.warning("Could not generate SHAP explanation")
