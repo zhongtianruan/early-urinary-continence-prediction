@@ -130,30 +130,6 @@ def main():
     model = load_model()
     if model is None:
         return
-
-    st.markdown("""
-<style>
-    /* 增大所有滑块标签字体 */
-    div[data-testid="stSlider"] label {
-        font-size: 18px !important;
-    }
-    
-    /* 增大单选按钮标签字体 */
-    div[data-testid="stRadio"] label {
-        font-size: 14px !important;
-    }
-    
-    /* 增大BMI分类说明字体 */
-    .stCaption {
-        font-size: 12px !important;
-    }
-    
-    /* 增大单选按钮选项字体 */
-    .stRadio label {
-        font-size: 12px !important;
-    }
-</style>
-""", unsafe_allow_html=True)
     
     # 输入参数 - 单列布局
     with st.container():
@@ -171,7 +147,7 @@ def main():
                        min_value=5.0, max_value=30.0, value=12.0, step=0.1)
             
             bmi = st.slider('BMI (1:≥24kg/m2，0:＜24kg/m2)', 
-                       min_value=18.0, max_value=35.0, value=25.0, step=0.1)
+                       min_value=15.0, max_value=35.0, value=25.0, step=0.1)
             st.caption(f"BMI category: {'≥24kg/m2' if bmi >= 24 else '＜24kg/m2'}")
         
         # 神经保留技术单独一行
