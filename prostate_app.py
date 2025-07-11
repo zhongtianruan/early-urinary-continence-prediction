@@ -100,64 +100,43 @@ def create_shap_plot(model, df_input):
             show=False
         )
         
-        # 获取原始HTML
-        plot_html = plot.html()
-        
-        # 核心修改：通过SVG缩放实现特征文字相对缩小
+        # HTML容器（确保足够的宽度和合适的样式）
         html_content = f"""
-        {shap.getjs()}
-        <div id="shap-container" style="width:100%; height:380px; overflow:visible; position:relative">
-            <div style="transform-origin: top left; transform: scale(1.25); position:absolute; left:0; top:0; width:125%;">
-                {plot_html}
+        <div class="shap-container">
+            {shap.getjs()}
+            <div class="shap-plot-wrapper">
+                {plot.html()}
             </div>
         </div>
         <style>
-            #shap-container .shap-force-plot {{
-                height: 380px !important; /* 增大容器高度 */
-                width: 100% !important;
+            .shap-container {{
+                width: 100%;
+                padding: 0 20px; /* 两侧增加留白 */
+                position: relative;
                 overflow: visible !important;
             }}
-            #shap-container svg {{
-                width: 100% !important;
-                min-width: 600px !important; /* 放大底图 */
-                height: auto !important;
+            .shap-plot-wrapper {{
+                position: relative;
+                width: 100%;
+                min-width: 450px; /* 确保足够宽度防止截断 */
+            }}
+            .shap-force-plot {{
+                height: 280px !important; /* 增加高度 */
+                font-size: 12px !important;
                 overflow: visible !important;
             }}
-            #shap-container .shap-left-panel {{
-                min-width: 220px !important; /* 增加左侧空间 */
-                padding-right: 15px !important;
+            .shap-left-panel {{
+                min-width: 200px !important; /* 确保标签完整显示 */
             }}
-            #shap-container .feature-name {{
-                font-size: 0.85em !important; /* 相对缩小特征名 */
+            .shap-force-plot .feature-name {{
+                white-space: nowrap; /* 防止换行 */
+                max-width: 100%;
+                overflow: visible !important;
             }}
-            #shap-container .feature-value {{
-                font-size: 0.9em !important; /* 相对缩小特征值 */
-            }}
-            #shap-container text {{
-                font-size: 11px !important; /* 固定坐标文字大小 */
+            .shap-force-plot svg {{
+                overflow: visible !important;
             }}
         </style>
-        <script>
-            // 自动调整位置确保可见性
-            setTimeout(() => {{
-                const container = document.querySelector('#shap-container');
-                if(container) {{
-                    // 防止特征名截断
-                    document.querySelectorAll('.shap-left-panel').forEach(panel => {{
-                        panel.style.marginLeft = "15px";
-                        panel.style.width = "auto";
-                    }});
-                    
-                    // 调整力轴数值显示
-                    document.querySelectorAll('text').forEach(text => {{
-                        if(!isNaN(text.textContent)) {{
-                            const num = parseFloat(text.textContent);
-                            text.textContent = num.toFixed(1);
-                        }}
-                    }});
-                }}
-            }}, 300);
-        </script>
         """
         return html_content
     
