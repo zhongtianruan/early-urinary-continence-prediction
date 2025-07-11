@@ -61,7 +61,7 @@ def process_input(data):
 
 # 特征名映射（中文->英文）
 FEATURE_MAPPING = {
-    'BMI': 'BMI',
+    'BMI': 'BMI(kg/m2)',
     'MUL': 'MUL(mm)',
     'LAT': 'LAT(mm)',
     'LAM_RAD_SCORE': 'LAM RAD Score',
@@ -120,11 +120,11 @@ def create_shap_plot(model, df_input):
             .shap-force-plot {{
                 width: 100% !important;
                 height: 250px !important;
-                font-size: 14px !important;
+                font-size: 12px !important;
                 overflow: visible !important;
             }}
             .shap-value {{
-                font-size: 14px !important;
+                font-size: 12px !important;
             }}
             .shap-left-panel {{
                 padding-left: 15px !important;
