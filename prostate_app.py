@@ -151,7 +151,7 @@ def main():
             st.caption(f"BMI category: {'≥24kg/m2' if bmi >= 24 else '＜24kg/m2'}")
         
         # 神经保留技术单独一行
-        nerve = st.radio('Nerve sparing technique (1:Yes, 0:No)', 
+        nerve = st.radio('Nerve sparing (1:Yes,\u00A00:No)', 
                     ('Yes', 'No'), index=0, horizontal=True)
     
     predict_btn = st.button('PREDICT RECOVERY PROBABILITY', type="primary", use_container_width=True)
