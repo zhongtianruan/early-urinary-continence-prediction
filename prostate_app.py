@@ -70,6 +70,8 @@ FEATURE_MAPPING = {
 
 def create_shap_plot(model, df_input):
     """无需预加载JS的SHAP生成方案"""
+    # 保存原始字体设置
+    original_font_size = plt.rcParams['font.size']
     try:
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
@@ -77,13 +79,26 @@ def create_shap_plot(model, df_input):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_input)
         english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
+        
+        # 创建格式化后的特征值数组（将特定特征显示为整数）
+        formatted_values = []
+        for i, feat in enumerate(df_input.columns):
+            value = df_input.iloc[0, i]
+            # 将BMI和Nerve sparing显示为整数
+            if feat in ['BMI', '手术技术']:
+                formatted_values.append(f"{int(value)}")
+            else:
+                formatted_values.append(f"{value:.2f}")
 
+        # 设置更大的字体
+        plt.rcParams['font.size'] = 14  # 增大字体大小
+        
         # 静态图像方案 - 避免JS依赖
-        plt.figure(figsize=(8, 2))  # 增加宽度，减小高度 <--- 修改这里
+        plt.figure(figsize=(8, 2))
         shap.force_plot(
             explainer.expected_value,
             shap_values[0],
-            df_input.iloc[0],
+            features=formatted_values,  # 使用格式化后的值
             feature_names=english_features,
             matplotlib=True,
             show=False
@@ -91,14 +106,16 @@ def create_shap_plot(model, df_input):
         
         # 返回Base64图像
         buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches="tight", dpi=100)  # 添加dpi参数 <--- 修改这里
+        plt.savefig(buf, format='png', bbox_inches="tight", dpi=100)
         plt.close()
         img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-        return f'<img src="data:image/png;base64,{img_base64}" style="width:100%">'  # 添加样式控制 <--- 修改这里
+        return f'<img src="data:image/png;base64,{img_base64}" style="width:100%">'
         
     except Exception as e:
         return f"<p style='color:red'>可视化渲染失败: {str(e)}</p>"
-
+    finally:
+        # 恢复原始字体设置
+        plt.rcParams['font.size'] = original_font_size
 
 # Main application
 def main():
