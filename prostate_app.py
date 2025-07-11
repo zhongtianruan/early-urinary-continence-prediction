@@ -37,7 +37,7 @@ st.set_page_config(
 # Fixed model path
 MODEL_PATH = "xgboost_model.pkl"  # 确保模型与代码同目录
 # SHAP初始化配置（兼容部署环境）
-shap.initjs()
+# shap.initjs()
 # shap.js.init()
 
 # Load model
@@ -79,7 +79,7 @@ def create_shap_plot(model, df_input):
         english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
 
         # 静态图像方案 - 避免JS依赖
-        plt.figure()
+        plt.figure(figsize=(8, 2))  # 增加宽度，减小高度 <--- 修改这里
         shap.force_plot(
             explainer.expected_value,
             shap_values[0],
@@ -91,13 +91,14 @@ def create_shap_plot(model, df_input):
         
         # 返回Base64图像
         buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches="tight")
+        plt.savefig(buf, format='png', bbox_inches="tight", dpi=100)  # 添加dpi参数 <--- 修改这里
         plt.close()
         img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-        return f'<img src="data:image/png;base64,{img_base64}">'
+        return f'<img src="data:image/png;base64,{img_base64}" style="width:100%">'  # 添加样式控制 <--- 修改这里
         
     except Exception as e:
         return f"<p style='color:red'>可视化渲染失败: {str(e)}</p>"
+
 
 # Main application
 def main():
@@ -187,8 +188,6 @@ def main():
             shap_html = create_shap_plot(model, df_input)
             if shap_html:
                 st.markdown(shap_html, unsafe_allow_html=True)
-            # if shap_html:
-                st.components.v1.html(shap_html, height=300)
             else:
                 st.warning("Could not generate SHAP explanation")
             
