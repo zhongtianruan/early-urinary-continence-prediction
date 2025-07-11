@@ -171,11 +171,11 @@ def main():
                              min_value=-5.0, max_value=5.0, value=0.01, step=0.01)
             
             mul = st.slider('MUL (mm)', 
-                       min_value=5.0, max_value=20.0, value=10.0, step=0.1)
+                       min_value=5.0, max_value=30.0, value=10.0, step=0.1)
         
         with col2:
             lat = st.slider('LAT (mm)', 
-                       min_value=5.0, max_value=20.0, value=12.0, step=0.1)
+                       min_value=5.0, max_value=30.0, value=12.0, step=0.1)
             
             bmi = st.slider('BMI (1:≥24kg/m2，0:＜24kg/m2)', 
                        min_value=18.0, max_value=35.0, value=25.0, step=0.1)
