@@ -69,7 +69,7 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """使用自定义格式的JavaScript渲染SHAP图，解决左侧标签截断问题"""
+    """使用自定义格式的JavaScript渲染SHAP图"""
     try:
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
@@ -78,104 +78,100 @@ def create_shap_plot(model, df_input):
         shap_values = explainer.shap_values(df_input)
         base_value = explainer.expected_value
         
+        # 创建带空格的特征名显示（解决截断问题）
         custom_features = []
+        feature_names_for_display = []  # 单独处理特征名显示
+        
         for i, feat in enumerate(df_input.columns):
             value = df_input.iloc[0, i]
+            
+            # 特征值显示处理
             if feat == '手术技术':
                 display_value = "YES" if value == 1 else "NO"
-                custom_features.append(f"{FEATURE_MAPPING[feat]}: {display_value}")
+                feature_value = f"{FEATURE_MAPPING[feat]}: {display_value}"
+                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}:")
             elif feat == 'BMI':
                 display_value = "≥24" if value == 1 else "<24"
-                custom_features.append(f"{FEATURE_MAPPING[feat]}: {display_value}")
+                feature_value = f"{FEATURE_MAPPING[feat]}: {display_value}"
+                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}:")
             else:
-                custom_features.append(f"{FEATURE_MAPPING[feat]}: {value:.2f}")
+                feature_value = f"{FEATURE_MAPPING[feat]}: {value:.2f}"
+                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}:")
+            
+            custom_features.append(feature_value)
         
+        # 生成SHAP力图（关键修改）
         plot = shap.force_plot(
             base_value=base_value,
             shap_values=shap_values[0],
-            features=custom_features,
-            feature_names=custom_features,
+            features=df_input.iloc[0].values,  # 使用原始数值
+            feature_names=feature_names_for_display,  # 单独处理特征名
             matplotlib=False,
             show=False
         )
         
-        # 关键修改：全新布局方案解决标签截断问题
+        # 解决标签截断的核心方案
         html_content = f"""
-        <!-- 增加外层容器并添加左侧缓冲空间 -->
-        <div style="width:100%; min-width:500px; margin-left:80px; overflow:visible">
+        <div class="shap-container">
             {shap.getjs()}
-            <div id="shap-container" style="width:100%; height:280px">
+            <div class="shap-plot-wrapper">
                 {plot.html()}
             </div>
         </div>
-        
         <style>
-            /* 强制重置SHAP默认样式 */
-            .shap-force-plot {{
-                width: calc(100% + 100px) !important;
-                min-width: 500px !important;
-                height: 240px !important;
-                transform: translateX(40px);
-            }}
-            
-            /* 增加左侧标签显示空间 */
-            .shap-left-panel {{
-                min-width: 220px !important;
-                padding-left: 40px !important;
-            }}
-            
-            /* 保证标签完整可见 */
-            .shap-force-plot .feature-value {{
-                max-width: none !important;
+            .shap-container {{
+                width: 100%;
+                padding: 0 0 0 25px; /* 左侧增加留白空间 */
+                position: relative;
                 overflow: visible !important;
-                text-overflow: unset !important;
             }}
-            
-            /* 调整数值位置 */
-            .shap-value {{
-                transform: translateX(5px);
-                font-size: 11.5px !important;
+            .shap-plot-wrapper {{
+                position: relative;
+                left: -15px; /* 整体左移腾出空间 */
+                width: calc(100% + 30px); /* 补偿宽度 */
             }}
-            
-            /* 基础值标签优化 */
-            .shap-base-value {{
-                left: -50px !important;
+            .shap-force-plot {{
+                height: 280px !important; /* 增加高度 */
+                font-size: 12px !important;
+                overflow: visible !important;
             }}
-            
-            /* 解决SVG裁剪问题 */
-            svg.shap-svg {{
+            .shap-left-panel {{
+                min-width: 200px !important; /* 确保标签完整显示 */
+                padding-right: 10px !important;
+            }}
+            .shap-force-plot .feature-name {{
+                white-space: nowrap; /* 防止换行 */
+                text-overflow: clip; /* 避免截断 */
+                display: inline-block;
+                max-width: 95%;
+                overflow: visible !important;
+            }}
+            .shap-force-plot svg {{
                 overflow: visible !important;
             }}
         </style>
-        
         <script>
-            // 渲染完成后强制刷新布局
             setTimeout(() => {{
-                // 格式化数值标签
+                // 格式化数值显示
                 document.querySelectorAll('text.shap-value').forEach(el => {{
                     if (!isNaN(el.textContent)) {{
                         el.textContent = parseFloat(el.textContent).toFixed(1);
                     }}
                 }});
                 
-                // 格式化基础值
+                // 调整base value位置
                 const baseEl = document.querySelector('text.shap-base-value');
-                if (baseEl) baseEl.textContent = parseFloat(baseEl.textContent).toFixed(2);
-                
-                // 动态调整标签空间
-                const containers = document.querySelectorAll('.shap-left-panel');
-                containers.forEach(el => {{
-                    el.style.minWidth = '220px';
-                    el.style.paddingRight = '10px';
-                }});
-                
-                // 刷新SVG渲染区域
-                const svg = document.querySelector('svg.shap-svg');
-                if (svg) {{
-                    const bbox = svg.getBBox();
-                    svg.setAttribute('viewBox', `${{bbox.x-50}} ${{bbox.y}} ${{bbox.width+80}} ${{bbox.height}}`);
+                if (baseEl) {{
+                    const baseValue = parseFloat(baseEl.textContent).toFixed(2);
+                    baseEl.textContent = baseValue;
+                    baseEl.setAttribute('x', parseFloat(baseEl.getAttribute('x')) + 5);
                 }}
-            }}, 800);
+                
+                // 关键：确保标签完全可见
+                document.querySelectorAll('.shap-left-panel').forEach(panel => {{
+                    panel.style.transform = 'translateX(8px)';
+                }});
+            }}, 800); /* 延长等待确保渲染完成 */
         </script>
         """
         return html_content
