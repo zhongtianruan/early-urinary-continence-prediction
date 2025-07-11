@@ -69,7 +69,7 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """使用JavaScript渲染SHAP图，完美还原本地效果"""
+    """使用自定义格式的JavaScript渲染SHAP图"""
     try:
         # 确保使用TreeExplainer
         if not hasattr(model, 'feature_names_in_'):
@@ -77,35 +77,79 @@ def create_shap_plot(model, df_input):
         
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_input)
+        base_value = explainer.expected_value
         
-        # 创建英文特征名列表用于显示
-        english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
+        # 创建自定义格式的特征值显示
+        custom_features = []
+        for i, feat in enumerate(df_input.columns):
+            value = df_input.iloc[0, i]
+            
+            # 特殊处理特定特征的显示
+            if feat == '手术技术':  # Nerve sparing
+                display_value = "YES" if value == 1 else "NO"
+                custom_features.append(f"{FEATURE_MAPPING[feat]}: {display_value}")
+            elif feat == 'BMI':  # BMI
+                display_value = "≥24" if value == 1 else "<24"
+                custom_features.append(f"{FEATURE_MAPPING[feat]}: {display_value}")
+            else:  # 其他特征保留原始值，保留2位小数
+                custom_features.append(f"{FEATURE_MAPPING[feat]}: {value:.2f}")
+        
+        # 格式化base value和shap值
+        formatted_base_value = f"{base_value:.2f}"
+        formatted_shap_values = [f"{v:.1f}" for v in shap_values[0]]
         
         # 生成SHAP力图
         plot = shap.force_plot(
-            base_value=explainer.expected_value,
+            base_value=base_value,
             shap_values=shap_values[0],
-            features=df_input.iloc[0],
-            feature_names=english_features,
-            matplotlib=False
+            features=custom_features,  # 使用自定义格式的特征显示
+            feature_names=custom_features,  # 同时用于特征名
+            matplotlib=False,
+            show=False
         )
         
-        # 返回完整的HTML并添加自定义样式
+        # 返回完整的HTML并添加自定义样式解决截断问题
         html_content = f"""
-        <div style="width:100%; height:300px; overflow:auto;">
+        <div style="width:100%; height:300px; overflow:visible; position:relative;">
             {shap.getjs()}
-            {plot.html()}
+            <div style="position:absolute; left:10px; width:95%;">
+                {plot.html()}
+            </div>
         </div>
         <style>
             .shap-force-plot {{
                 width: 100% !important;
                 height: 250px !important;
                 font-size: 14px !important;
+                overflow: visible !important;
             }}
             .shap-value {{
                 font-size: 14px !important;
             }}
+            .shap-left-panel {{
+                padding-left: 15px !important;
+            }}
         </style>
+        <script>
+            // 确保图表渲染完成后调整格式
+            setTimeout(() => {{
+                // 格式化坐标轴标签
+                document.querySelectorAll('text.shap-value').forEach(el => {{
+                    const text = el.textContent;
+                    if (!isNaN(text)) {{
+                        const num = parseFloat(text);
+                        el.textContent = num.toFixed(1);
+                    }}
+                }});
+                
+                // 格式化base value标签
+                const baseEl = document.querySelector('text.shap-base-value');
+                if (baseEl) {{
+                    const baseValue = parseFloat(baseEl.textContent);
+                    baseEl.textContent = baseValue.toFixed(2);
+                }}
+            }}, 500);
+        </script>
         """
         return html_content
     
@@ -184,7 +228,7 @@ def main():
                 result_text = "✅ CONTINENCE RECOVERED"
                 color = "green"
             else:
-                result_text = "❌ CONTINENCE NOT RECOVERED"
+                result_text = "❗ CONTINENCE NOT RECOVERED"
                 color = "red"
             
             # 在同一行显示结果和概率（缩小概率字体）
