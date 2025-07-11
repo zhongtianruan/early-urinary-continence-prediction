@@ -152,7 +152,7 @@ def main():
         
         # 神经保留技术单独一行
         nerve = st.radio('Nerve sparing technique', 
-                    ('Yes(1)', 'No(0)'), index=0, horizontal=True)
+                    ('Yes', 'No'), index=0, horizontal=True)
     
     predict_btn = st.button('PREDICT RECOVERY PROBABILITY', type="primary", use_container_width=True)
 
