@@ -56,7 +56,7 @@ def process_input(data):
         'MUL': [data['MUL']],
         'LAT': [data['LAT']],
         'LAM_RAD_SCORE': [data['LAM_RAD_SCORE']],
-        '手术技术': [1 if data['Nerve_sparing'] == 'Yes' else 0]  # 修正为模型要求的特征名
+        '手术技术': [1 if data['Nerve_sparing'] == 'Yes (1)' else 0]  # 修改匹配值
     })
 
 # 特征名映射（中文->英文）
@@ -151,8 +151,8 @@ def main():
             st.caption(f"BMI category: {'≥24kg/m2' if bmi >= 24 else '＜24kg/m2'}")
         
         # 神经保留技术单独一行
-        nerve = st.radio('Nerve sparing (1:Yes,\u00A00:No)', 
-                    ('Yes', 'No'), index=0, horizontal=True)
+        nerve = st.radio('Nerve sparing technique', 
+                    ('Yes (1)', 'No (0)'), index=0, horizontal=True)
     
     predict_btn = st.button('PREDICT RECOVERY PROBABILITY', type="primary", use_container_width=True)
 
