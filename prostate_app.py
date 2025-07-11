@@ -69,72 +69,41 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """使用SHAP默认显示方式，但对分类变量进行特殊处理"""
+    """使用JavaScript渲染SHAP图，完美还原本地效果"""
     try:
+        # 确保使用TreeExplainer
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
         
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_input)
-        base_value = explainer.expected_value
         
-        # 创建特征值显示数组（对分类变量进行特殊处理）
-        display_values = []
-        for feat in df_input.columns:
-            value = df_input[feat].iloc[0]
-            if feat == '手术技术':
-                display_values.append("YES" if value == 1 else "NO")
-            elif feat == 'BMI':
-                display_values.append("≥24" if value == 1 else "<24")
-            else:
-                # 数值型特征保留原始值（两位小数）
-                display_values.append(f"{value:.2f}" if isinstance(value, float) else str(value))
+        # 创建英文特征名列表用于显示
+        english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
         
-        # 生成SHAP力图（使用默认显示方式）
+        # 生成SHAP力图
         plot = shap.force_plot(
-            base_value=base_value,
+            base_value=explainer.expected_value,
             shap_values=shap_values[0],
-            features=display_values,  # 使用处理后的显示值
-            feature_names=[FEATURE_MAPPING[feat] for feat in df_input.columns],  # 仅传入特征名
-            matplotlib=False,
-            show=False
+            features=df_input.iloc[0],
+            feature_names=english_features,
+            matplotlib=False
         )
         
-        # HTML容器（确保足够的宽度和合适的样式）
+        # 返回完整的HTML并添加自定义样式
         html_content = f"""
-        <div class="shap-container">
+        <div style="width:100%; height:300px; overflow:auto;">
             {shap.getjs()}
-            <div class="shap-plot-wrapper">
-                {plot.html()}
-            </div>
+            {plot.html()}
         </div>
         <style>
-            .shap-container {{
-                width: 100%;
-                padding: 0 20px; /* 两侧增加留白 */
-                position: relative;
-                overflow: visible !important;
-            }}
-            .shap-plot-wrapper {{
-                position: relative;
-                width: 100%;
-                min-width: 450px; /* 确保足够宽度防止截断 */
-            }}
             .shap-force-plot {{
-                height: 280px !important; /* 增加高度 */
-                font-size: 12px !important;
-                overflow: visible !important;
+                width: 100% !important;
+                height: 250px !important;
+                font-size: 14px !important;
             }}
-            .shap-left-panel {{
-                min-width: 200px !important; /* 确保标签完整显示 */
-            }}
-            .shap-force-plot .feature-name {{
-                white-space: nowrap; /* 防止换行 */
-                max-width: 100%;
-                overflow: visible !important;
-            }}
-            .shap-force-plot svg {{
-                overflow: visible !important;
+            .shap-value {{
+                font-size: 14px !important;
             }}
         </style>
         """
