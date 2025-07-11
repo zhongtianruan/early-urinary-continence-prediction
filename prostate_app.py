@@ -69,8 +69,9 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """使用SHAP默认显示方式，但对分类变量进行特殊处理"""
+    """优化版SHAP图生成函数，提高在线部署性能"""
     try:
+        # 确保模型有特征名属性
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
         
@@ -90,55 +91,28 @@ def create_shap_plot(model, df_input):
                 # 数值型特征保留原始值（两位小数）
                 display_values.append(f"{value:.2f}" if isinstance(value, float) else str(value))
         
-        # 生成SHAP力图（使用默认显示方式）
-        plot = shap.force_plot(
+        # 使用Matplotlib生成静态图像 - 提高性能
+        plt.figure(figsize=(10, 4))
+        shap.force_plot(
             base_value=base_value,
             shap_values=shap_values[0],
-            features=display_values,  # 使用处理后的显示值
-            feature_names=[FEATURE_MAPPING[feat] for feat in df_input.columns],  # 仅传入特征名
-            matplotlib=False,
+            features=display_values,
+            feature_names=[FEATURE_MAPPING[feat] for feat in df_input.columns],
+            matplotlib=True,
             show=False
         )
         
-        # HTML容器（确保足够的宽度和合适的样式）
-        html_content = f"""
-        <div class="shap-container">
-            {shap.getjs()}
-            <div class="shap-plot-wrapper">
-                {plot.html()}
-            </div>
-        </div>
-        <style>
-            .shap-container {{
-                width: 100%;
-                padding: 0 20px; /* 两侧增加留白 */
-                position: relative;
-                overflow: visible !important;
-            }}
-            .shap-plot-wrapper {{
-                position: relative;
-                width: 100%;
-                min-width: 450px; /* 确保足够宽度防止截断 */
-            }}
-            .shap-force-plot {{
-                height: 280px !important; /* 增加高度 */
-                font-size: 12px !important;
-                overflow: visible !important;
-            }}
-            .shap-left-panel {{
-                min-width: 200px !important; /* 确保标签完整显示 */
-            }}
-            .shap-force-plot .feature-name {{
-                white-space: nowrap; /* 防止换行 */
-                max-width: 100%;
-                overflow: visible !important;
-            }}
-            .shap-force-plot svg {{
-                overflow: visible !important;
-            }}
-        </style>
-        """
-        return html_content
+        # 优化图表样式
+        plt.title('Feature Impact on Prediction', fontsize=12)
+        plt.tight_layout()
+        
+        # 将图表转换为图像
+        buf = BytesIO()
+        plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        plt.close()
+        encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
+        
+        return f'<img src="data:image/png;base64,{encoded}" style="width:100%;">'
     
     except Exception as e:
         return f"<p style='color:red'>SHAP生成错误: {str(e)}</p>"
