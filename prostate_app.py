@@ -177,12 +177,12 @@ def main():
             lat = st.slider('LAT (mm)', 
                        min_value=5.0, max_value=20.0, value=12.0, step=0.1)
             
-            bmi = st.slider('BMI', 
+            bmi = st.slider('BMI (1:≥24kg/m2，0:＜24kg/m2)', 
                        min_value=18.0, max_value=35.0, value=25.0, step=0.1)
             st.caption(f"BMI category: {'≥24kg/m2' if bmi >= 24 else '＜24kg/m2'}")
         
         # 神经保留技术单独一行
-        nerve = st.radio('Nerve sparing technique', 
+        nerve = st.radio('Nerve sparing technique (YES=1,NO=0)', 
                     ('Yes', 'No'), index=0, horizontal=True)
     
     predict_btn = st.button('PREDICT RECOVERY PROBABILITY', type="primary", use_container_width=True)
