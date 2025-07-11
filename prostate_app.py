@@ -94,10 +94,6 @@ def create_shap_plot(model, df_input):
             else:  # 其他特征保留原始值，保留2位小数
                 custom_features.append(f"{FEATURE_MAPPING[feat]}: {value:.2f}")
         
-        # 格式化base value和shap值
-        formatted_base_value = f"{base_value:.2f}"
-        formatted_shap_values = [f"{v:.1f}" for v in shap_values[0]]
-        
         # 生成SHAP力图
         plot = shap.force_plot(
             base_value=base_value,
@@ -110,9 +106,9 @@ def create_shap_plot(model, df_input):
         
         # 返回完整的HTML并添加自定义样式解决截断问题
         html_content = f"""
-        <div style="width:100%; height:300px; overflow:visible; position:relative;">
+        <div style="width:100%; height:300px; overflow:visible; position:relative; padding-left: 20px;">
             {shap.getjs()}
-            <div style="position:absolute; left:10px; width:95%;">
+            <div style="position:absolute; left:0; width:100%;">
                 {plot.html()}
             </div>
         </div>
@@ -127,7 +123,17 @@ def create_shap_plot(model, df_input):
                 font-size: 12px !important;
             }}
             .shap-left-panel {{
-                padding-left: 15px !important;
+                padding-left: 25px !important;  /* 增加左侧内边距 */
+                min-width: 150px !important;    /* 确保左侧有足够空间 */
+            }}
+            .shap-force-plot svg {{
+                overflow: visible !important;
+            }}
+            .shap-force-plot .left-panel {{
+                padding-left: 25px !important;  /* 为左侧面板增加更多空间 */
+            }}
+            .shap-force-plot .feature-value {{
+                white-space: nowrap !important;  /* 防止文本换行 */
             }}
         </style>
         <script>
@@ -148,6 +154,12 @@ def create_shap_plot(model, df_input):
                     const baseValue = parseFloat(baseEl.textContent);
                     baseEl.textContent = baseValue.toFixed(2);
                 }}
+                
+                // 手动调整左侧面板宽度
+                const leftPanels = document.querySelectorAll('.shap-left-panel');
+                leftPanels.forEach(panel => {{
+                    panel.style.minWidth = '150px';  // 确保左侧有足够空间
+                }});
             }}, 500);
         </script>
         """
