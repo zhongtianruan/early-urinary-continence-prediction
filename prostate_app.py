@@ -69,9 +69,8 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """优化版SHAP图生成函数，提高在线部署性能"""
+    """使用SHAP默认显示方式，但对分类变量进行特殊处理"""
     try:
-        # 确保模型有特征名属性
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
         
@@ -91,28 +90,76 @@ def create_shap_plot(model, df_input):
                 # 数值型特征保留原始值（两位小数）
                 display_values.append(f"{value:.2f}" if isinstance(value, float) else str(value))
         
-        # 使用Matplotlib生成静态图像 - 提高性能
-        plt.figure(figsize=(10, 4))
-        shap.force_plot(
+        # 生成SHAP力图（使用默认显示方式）
+        plot = shap.force_plot(
             base_value=base_value,
             shap_values=shap_values[0],
-            features=display_values,
-            feature_names=[FEATURE_MAPPING[feat] for feat in df_input.columns],
-            matplotlib=True,
+            features=display_values,  # 使用处理后的显示值
+            feature_names=[FEATURE_MAPPING[feat] for feat in df_input.columns],  # 仅传入特征名
+            matplotlib=False,
             show=False
         )
         
-        # 优化图表样式
-        plt.title('Feature Impact on Prediction', fontsize=12)
-        plt.tight_layout()
+        # 获取原始HTML
+        plot_html = plot.html()
         
-        # 将图表转换为图像
-        buf = BytesIO()
-        plt.savefig(buf, format="png", dpi=100, bbox_inches="tight")
-        plt.close()
-        encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
-        
-        return f'<img src="data:image/png;base64,{encoded}" style="width:100%;">'
+        # 核心修改：通过SVG缩放实现特征文字相对缩小
+        html_content = f"""
+        {shap.getjs()}
+        <div id="shap-container" style="width:100%; height:380px; overflow:visible; position:relative">
+            <div style="transform-origin: top left; transform: scale(1.25); position:absolute; left:0; top:0; width:125%;">
+                {plot_html}
+            </div>
+        </div>
+        <style>
+            #shap-container .shap-force-plot {{
+                height: 380px !important; /* 增大容器高度 */
+                width: 100% !important;
+                overflow: visible !important;
+            }}
+            #shap-container svg {{
+                width: 100% !important;
+                min-width: 600px !important; /* 放大底图 */
+                height: auto !important;
+                overflow: visible !important;
+            }}
+            #shap-container .shap-left-panel {{
+                min-width: 220px !important; /* 增加左侧空间 */
+                padding-right: 15px !important;
+            }}
+            #shap-container .feature-name {{
+                font-size: 0.85em !important; /* 相对缩小特征名 */
+            }}
+            #shap-container .feature-value {{
+                font-size: 0.9em !important; /* 相对缩小特征值 */
+            }}
+            #shap-container text {{
+                font-size: 11px !important; /* 固定坐标文字大小 */
+            }}
+        </style>
+        <script>
+            // 自动调整位置确保可见性
+            setTimeout(() => {{
+                const container = document.querySelector('#shap-container');
+                if(container) {{
+                    // 防止特征名截断
+                    document.querySelectorAll('.shap-left-panel').forEach(panel => {{
+                        panel.style.marginLeft = "15px";
+                        panel.style.width = "auto";
+                    }});
+                    
+                    // 调整力轴数值显示
+                    document.querySelectorAll('text').forEach(text => {{
+                        if(!isNaN(text.textContent)) {{
+                            const num = parseFloat(text.textContent);
+                            text.textContent = num.toFixed(1);
+                        }}
+                    }});
+                }}
+            }}, 300);
+        </script>
+        """
+        return html_content
     
     except Exception as e:
         return f"<p style='color:red'>SHAP生成错误: {str(e)}</p>"
