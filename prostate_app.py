@@ -69,53 +69,48 @@ FEATURE_MAPPING = {
 }
 
 def create_shap_plot(model, df_input):
-    """无需预加载JS的SHAP生成方案"""
-    # 保存原始字体设置
-    original_font_size = plt.rcParams['font.size']
+    """使用JavaScript渲染SHAP图，完美还原本地效果"""
     try:
+        # 确保使用TreeExplainer
         if not hasattr(model, 'feature_names_in_'):
             model.feature_names_in_ = df_input.columns.tolist()
-            
+        
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_input)
+        
+        # 创建英文特征名列表用于显示
         english_features = [FEATURE_MAPPING.get(f, f) for f in df_input.columns]
         
-        # 创建格式化后的特征值数组（将特定特征显示为整数）
-        formatted_values = []
-        for i, feat in enumerate(df_input.columns):
-            value = df_input.iloc[0, i]
-            # 将BMI和Nerve sparing显示为整数
-            if feat in ['BMI', '手术技术']:
-                formatted_values.append(f"{int(value)}")
-            else:
-                formatted_values.append(f"{value:.2f}")
-
-        # 设置更大的字体
-        plt.rcParams['font.size'] = 14  # 增大字体大小
-        
-        # 静态图像方案 - 避免JS依赖
-        plt.figure(figsize=(8, 2))
-        shap.force_plot(
-            explainer.expected_value,
-            shap_values[0],
-            features=formatted_values,  # 使用格式化后的值
+        # 生成SHAP力图
+        plot = shap.force_plot(
+            base_value=explainer.expected_value,
+            shap_values=shap_values[0],
+            features=df_input.iloc[0],
             feature_names=english_features,
-            matplotlib=True,
-            show=False
+            matplotlib=False
         )
         
-        # 返回Base64图像
-        buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches="tight", dpi=100)
-        plt.close()
-        img_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-        return f'<img src="data:image/png;base64,{img_base64}" style="width:100%">'
-        
+        # 返回完整的HTML并添加自定义样式
+        html_content = f"""
+        <div style="width:100%; height:300px; overflow:auto;">
+            {shap.getjs()}
+            {plot.html()}
+        </div>
+        <style>
+            .shap-force-plot {{
+                width: 100% !important;
+                height: 250px !important;
+                font-size: 14px !important;
+            }}
+            .shap-value {{
+                font-size: 14px !important;
+            }}
+        </style>
+        """
+        return html_content
+    
     except Exception as e:
-        return f"<p style='color:red'>可视化渲染失败: {str(e)}</p>"
-    finally:
-        # 恢复原始字体设置
-        plt.rcParams['font.size'] = original_font_size
+        return f"<p style='color:red'>SHAP生成错误: {str(e)}</p>"
 
 # Main application
 def main():
@@ -204,7 +199,7 @@ def main():
             # 直接显示SHAP图（不显示标题）
             shap_html = create_shap_plot(model, df_input)
             if shap_html:
-                st.markdown(shap_html, unsafe_allow_html=True)
+                st.components.v1.html(shap_html, height=300)  # 使用components渲染HTML
             else:
                 st.warning("Could not generate SHAP explanation")
             
