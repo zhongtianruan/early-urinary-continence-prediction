@@ -89,14 +89,14 @@ def create_shap_plot(model, df_input):
             if feat == '手术技术':
                 display_value = "YES" if value == 1 else "NO"
                 feature_value = f"{FEATURE_MAPPING[feat]}: {display_value}"
-                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}:")
+                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}")
             elif feat == 'BMI':
                 display_value = "≥24" if value == 1 else "<24"
                 feature_value = f"{FEATURE_MAPPING[feat]}: {display_value}"
-                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}:")
+                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}")
             else:
                 feature_value = f"{FEATURE_MAPPING[feat]}: {value:.2f}"
-                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}:")
+                feature_names_for_display.append(f"{FEATURE_MAPPING[feat]}")
             
             custom_features.append(feature_value)
         
